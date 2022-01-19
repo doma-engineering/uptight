@@ -1,8 +1,10 @@
 defmodule UptightTest do
+  @moduledoc """
+  Tests for tight stuff.
+  """
   use ExUnit.Case
-  doctest Uptight
-
-  test "greets the world" do
-    assert Uptight.hello() == :world
-  end
+  doctest Uptight.Result
+  doctest Uptight.Base
+  doctest Uptight.Text
+  doctest Uptight.Fold
 end
