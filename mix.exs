@@ -4,7 +4,7 @@ defmodule Uptight.MixProject do
   def project do
     [
       app: :uptight,
-      version: "0.1.0",
+      version: "0.1.0-pre",
       description:
         "Tools for tighter (more static) programming in Elixir with a particular focus on distinguishing types of binary data and pushing offensive programming capabilities to their limits.",
       elixir: "~> 1.12",
@@ -26,6 +26,7 @@ defmodule Uptight.MixProject do
   defp deps do
     [
       {:credo, "~> 1.5", only: [:dev, :test], runtime: false},
+      {:ex_doc, ">= 0.0.0", only: :dev, runtime: false},
       {:dialyxir, "~> 1.1.0", [runtime: false]},
       {:doma_witchcraft, "~> 1.0.4-doma"},
       {:doma_algae, "~> 1.3.1-doma"},
