@@ -5,9 +5,13 @@ defmodule Uptight.MixProject do
     [
       app: :uptight,
       version: "0.1.0",
+      description:
+        "Tools for tighter (more static) programming in Elixir with a particular focus on distinguishing types of binary data and pushing offensive programming capabilities to their limits.",
       elixir: "~> 1.12",
       start_permanent: Mix.env() == :prod,
-      deps: deps()
+      deps: deps(),
+      name: "Uptight",
+      package: package()
     ]
   end
 
@@ -23,9 +27,21 @@ defmodule Uptight.MixProject do
     [
       {:credo, "~> 1.5", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.1.0", [runtime: false]},
-      {:witchcraft, git: "https://github.com/doma-engineering/witchcraft.git", ref: "9c31c75"},
-      {:algae, git: "https://github.com/doma-engineering/algae.git", ref: "e9b8f88"},
-      {:quark, git: "https://github.com/witchcrafters/quark.git", ref: "b05a8a0"},
+      {:doma_witchcraft, "~> 1.0.4-doma"},
+      {:doma_algae, "~> 1.3.1-doma"},
+      {:doma_quark, "~> 2.3.2-doma2"}
+    ]
+  end
+
+  defp package do
+    [
+      licenses: ["WTFPL"],
+      links: %{
+        "GitHub" => "https://github.com/doma-engineering/uptight",
+        "Support" => "https://social.doma.dev/@jonn",
+        "Matrix" => "https://matrix.to/#/#uptight:matrix.org"
+      },
+      maintainers: ["doma.dev"]
     ]
   end
 end

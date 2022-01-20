@@ -21,16 +21,8 @@ defmodule Uptight.Result do
   Run failable function, capturing return value into Ok and a runtime error into Err.
 
   ## Examples
-      iex> Uptight.Result.new(fn () -> :erlang.system_flag(:backtrace_depth, 0); raise "oopsie" end)
-      %Uptight.Result.Err{
-        err: %Uptight.Trace{
-          exception: %RuntimeError{message: "oopsie"},
-          stacktrace: [
-            {UptightTest, :"-doctest Uptight.Result.new/1 (1)/1-fun-0-", 0,
-            [file: '(for doctest at) lib/uptight/result.ex', line: 24]}
-          ]
-        }
-      }
+      iex> Uptight.Result.new(fn () -> :erlang.system_flag(:backtrace_depth, 0); raise "oopsie" end) |> Uptight.Result.is_err?()
+      true
 
       iex> Uptight.Result.new(fn () -> :erlang.system_flag(:backtrace_depth, 20); raise "is_err!" end) |> Uptight.Result.is_err?()
       true
