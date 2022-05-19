@@ -4,10 +4,10 @@ defmodule Uptight.MixProject do
   def project do
     [
       app: :uptight,
-      version: "0.1.0-pre1",
+      version: "0.2.0",
       description:
         "Tools for tighter (more static) programming in Elixir with a particular focus on distinguishing types of binary data and pushing offensive programming capabilities to their limits.",
-      elixir: "~> 1.12",
+      elixir: "~> 1.13",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       name: "Uptight",

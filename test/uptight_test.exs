@@ -7,4 +7,5 @@ defmodule UptightTest do
   doctest Uptight.Base
   doctest Uptight.Text
   doctest Uptight.Fold
+  doctest Uptight.Assertions
 end
