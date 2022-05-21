@@ -41,8 +41,8 @@ defmodule Uptight.Assertions.Formatter do
 
   The full Uptight configuration is passed as the argument to `c:GenServer.init/1` callback when the
   formatters are started. If you need to do runtime configuration of a
-  formatter, you can add any configuration needed by using `Uptight.configure/1`
-  or `Uptight.start/1`, and this will then be included in the options passed to
+  formatter, you can only do it when you run ExUnit by using `ExUnit.configure/1`
+  or `ExUnit.start/1`, and this will then be included in the options passed to
   the `c:GenServer.init/1` callback.
   """
 
