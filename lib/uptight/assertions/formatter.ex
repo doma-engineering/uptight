@@ -69,7 +69,7 @@ defmodule Uptight.Assertions.Formatter do
 
   import Exception, only: [format_stacktrace_entry: 1, format_file_line: 3]
 
-  alias Uptight.Diff
+  alias Uptight.Assertions.Diff
   alias Inspect.Algebra
 
   @counter_padding "     "
@@ -115,7 +115,7 @@ defmodule Uptight.Assertions.Formatter do
   end
 
   defp normalize_us(nil), do: 0
-  defp normalize_us(us), do: div(us, 10000)
+  defp normalize_us(us), do: div(us, 10_000)
 
   defp format_us(us) do
     if us < 10 do
@@ -491,16 +491,6 @@ defmodule Uptight.Assertions.Formatter do
     format_stacktrace_entry(entry)
   end
 
-  defp with_location(tags) do
-    path = "#{Path.relative_to_cwd(tags[:file])}:#{tags[:line]}"
-
-    if prefix = Application.get_env(:ex_unit, :test_location_relative_path) do
-      Path.join(prefix, path)
-    else
-      path
-    end
-  end
-
   defp failure_header([_], _), do: ""
   defp failure_header(_, i), do: "\n#{@counter_padding}Failure ##{i + 1}\n"
 
@@ -521,12 +511,6 @@ defmodule Uptight.Assertions.Formatter do
 
   defp test_module_info(msg, formatter),
     do: test_module_info(formatter.(:test_module_info, msg), nil)
-
-  defp test_info(msg, nil), do: msg <> "\n"
-  defp test_info(msg, formatter), do: test_info(formatter.(:test_info, msg), nil)
-
-  defp test_location(msg, nil), do: "     " <> msg <> "\n"
-  defp test_location(msg, formatter), do: test_location(formatter.(:location_info, msg), nil)
 
   defp pad(msg) do
     "     " <> pad_multiline(msg, 5) <> "\n"
