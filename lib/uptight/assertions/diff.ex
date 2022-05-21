@@ -5,20 +5,16 @@ defmodule Uptight.Assertions.Diff do
   #
   # The Diff struct contains the fields `:equivalent?`, `:left`, `:right`.
   # The `:equivalent?` field represents if the `:left` and `:right` side are
-  # equivalents and contain no diffs. The `:left` and `:right` represent the
-  # sides of the comparison as ASTs.
+  # equivalents and contain no diffs. The `:left` and `:right` represent the sides
+  # of the comparison and contain ASTs with some special metas: `:diff` and
+  # `:diff_container`.
   #
-  # The ASTs may be wrapped in blocks with two special metas:
-  #
-  #   * `:diff` - when `true`, the AST inside of it has no equivalent
-  #     on the other side and should be rendered in a different color
-  #
-  #   * `:delimiter` - that particular block should be rendered with
-  #     a delimiter
-  #
-  # Given blocks are do not appear on the left side or right, it is
-  # safe to perform such wrapping.
+  # When meta `:diff` is `true`, the AST inside of it has no equivalent on the
+  # other side and should be rendered in a different color. If the AST is a
+  # literal and doesn't contain meta, the `:diff` meta will be placed in a
+  # wrapping block.
 
+  alias Code.Identifier
   alias Inspect.Algebra
 
   defstruct equivalent?: true,
@@ -37,10 +33,10 @@ defmodule Uptight.Assertions.Diff do
   end
 
   defp context_to_env({:match, pins}),
-    do: %{pins: Map.new(pins), context: :match, current_vars: %{}, hints: []}
+    do: %{pins: Map.new(pins), context: :match, current_vars: %{}}
 
   defp context_to_env(op) when op in [:==, :===],
-    do: %{pins: %{}, context: op, current_vars: %{}, hints: []}
+    do: %{pins: %{}, context: op, current_vars: %{}}
 
   # Main entry point for recursive diff
 
@@ -197,7 +193,7 @@ defmodule Uptight.Assertions.Diff do
     {guard_clause, guard_equivalent?} =
       if diff_expression.equivalent? do
         bindings = Map.merge(post_env.pins, post_env.current_vars)
-        diff_guard_clause(clause, bindings)
+        diff_guard_clause(clause, Map.to_list(bindings))
       else
         {clause, false}
       end
@@ -228,24 +224,12 @@ defmodule Uptight.Assertions.Diff do
   defp diff_guard_clause(quoted, bindings) do
     expanded =
       Macro.prewalk(quoted, fn
-        {_, [{:expanded, expanded} | _], _} ->
-          expanded
-
-        {var, _, context} = expr when is_atom(var) and is_atom(context) ->
-          if Map.has_key?(bindings, var_context(expr)) do
-            expr
-          else
-            throw(:abort)
-          end
-
-        other ->
-          other
+        {_, [{:expanded, expanded} | _], _} -> expanded
+        other -> other
       end)
 
-    {equivalent?, _bindings} = Code.eval_quoted(expanded, Map.to_list(bindings))
+    {equivalent?, _bindings} = Code.eval_quoted(expanded, bindings)
     {update_diff_meta(quoted, !equivalent?), equivalent?}
-  catch
-    :abort -> {quoted, false}
   end
 
   # Pins
@@ -261,8 +245,8 @@ defmodule Uptight.Assertions.Diff do
 
   # Vars
 
-  defp diff_var(left, right, env) do
-    identifier = var_context(left)
+  defp diff_var({name, meta, context} = left, right, env) do
+    identifier = {name, meta[:counter] || context}
 
     case env.current_vars do
       %{^identifier => ^right} ->
@@ -375,17 +359,15 @@ defmodule Uptight.Assertions.Diff do
     left = Enum.reverse(left)
 
     case extract_diff_meta(right) do
-      # Outer was escaped. Copy its diff? to its inner element and potentially escape it.
-      {{unescaped}, diff?} ->
-        rebuild_maybe_improper(unescaped, left, &(&1 |> escape() |> update_diff_meta(diff?)))
-
-      # We have a proper list, if there are any diffs, they will be inside, so copy as is.
-      {[_ | _] = list, false} ->
+      {[_ | _] = list, _diff?} ->
+        # Inner was escaped, diffs are inside
         rebuild_maybe_improper(list, left, & &1)
 
-      # The right itself is improper, so just add it as is.
-      {_, _} ->
-        rebuild_maybe_improper(right, left, & &1)
+      {list, diff?} ->
+        # Outer was escaped, move diffs and escape inside
+        list
+        |> unescape()
+        |> rebuild_maybe_improper(left, &(&1 |> escape() |> update_diff_meta(diff?)))
     end
   end
 
@@ -689,11 +671,13 @@ defmodule Uptight.Assertions.Diff do
          {:ok, inspect_left} <- safe_inspect(left),
          {:ok, inspect_right} <- safe_inspect(right) do
       if inspect_left != inspect_right do
-        diff_string(inspect_left, inspect_right, nil, env)
+        diff_string(inspect_left, inspect_right, :none, env)
       else
         # If they are equivalent, still use their inspected form
         case diff_map(kw, right, struct1, struct2, env) do
           {%{equivalent?: true}, ctx} ->
+            left = block_diff_container([inspect_left], :none)
+            right = block_diff_container([inspect_right], :none)
             {%__MODULE__{equivalent?: true, left: left, right: right}, ctx}
 
           diff_ctx ->
@@ -741,27 +725,20 @@ defmodule Uptight.Assertions.Diff do
     left = IO.iodata_to_binary(escaped_left)
     right = IO.iodata_to_binary(escaped_right)
 
-    cond do
-      left == right ->
-        {string_script_to_diff([eq: left], delimiter, true, [], []), env}
-
-      diff_string?(left, right) ->
-        diff =
+    diff =
+      cond do
+        diff_string?(left, right) ->
           String.myers_difference(left, right)
           |> string_script_to_diff(delimiter, true, [], [])
 
-        env =
-          if String.equivalent?(left, right) do
-            add_hint(env, :equivalent_but_different_strings)
-          else
-            env
-          end
+        left == right ->
+          string_script_to_diff([eq: left], delimiter, true, [], [])
 
-        {diff, env}
+        true ->
+          string_script_to_diff([del: left, ins: right], delimiter, true, [], [])
+      end
 
-      true ->
-        {string_script_to_diff([del: left, ins: right], delimiter, true, [], []), env}
-    end
+    {diff, env}
   end
 
   # Concat all the literals on `left` and split `right` based on the size of
@@ -843,7 +820,7 @@ defmodule Uptight.Assertions.Diff do
     {:<>, [], [next, rebuilt_right]}
   end
 
-  defp next_concat_result({:__block__, [{:delimiter, _} | _] = meta, list}, index) do
+  defp next_concat_result({:__block__, [{:diff_container, _} | _] = meta, list}, index) do
     {next, continue} = next_concat_result(list, index)
     {{:__block__, meta, next}, {:__block__, meta, continue}}
   end
@@ -869,15 +846,15 @@ defmodule Uptight.Assertions.Diff do
     end
   end
 
-  defp block_delimiter(contents, nil),
+  defp block_diff_container(contents, :none),
     do: {:__block__, [], contents}
 
-  defp block_delimiter(contents, container),
-    do: {:__block__, [delimiter: container], contents}
+  defp block_diff_container(contents, container),
+    do: {:__block__, [diff_container: container], contents}
 
   defp string_script_to_diff([], delimiter, equivalent?, left, right) do
-    left = block_delimiter(Enum.reverse(left), delimiter)
-    right = block_delimiter(Enum.reverse(right), delimiter)
+    left = block_diff_container(Enum.reverse(left), delimiter)
+    right = block_diff_container(Enum.reverse(right), delimiter)
     %__MODULE__{equivalent?: equivalent?, left: left, right: right}
   end
 
@@ -896,7 +873,7 @@ defmodule Uptight.Assertions.Diff do
   # Numbers
 
   defp diff_number(left, right, env) do
-    diff_string(inspect(left), inspect(right), nil, env)
+    diff_string(inspect(left), inspect(right), :none, env)
   end
 
   # Algebra
@@ -909,13 +886,9 @@ defmodule Uptight.Assertions.Diff do
   end
 
   defp safe_to_algebra({:__block__, meta, list}, diff_wrapper) do
-    content_docs =
-      for item <- list do
-        # Each element of the list is either a literal or a wrapped literal in a diff
-        wrap_on_diff(item, fn literal, _ -> literal end, diff_wrapper)
-      end
+    content_docs = Enum.map(list, &string_to_algebra(&1, diff_wrapper))
 
-    if container = meta[:delimiter] do
+    if container = meta[:diff_container] do
       delimiter = to_string([container])
       Algebra.concat([delimiter] ++ content_docs ++ [delimiter])
     else
@@ -968,6 +941,14 @@ defmodule Uptight.Assertions.Diff do
     inspect(literal)
   end
 
+  def string_to_algebra(quoted, diff_wrapper) do
+    wrap_on_diff(quoted, &safe_string_to_algebra/2, diff_wrapper)
+  end
+
+  def safe_string_to_algebra(literal, _diff_wrapper) do
+    literal
+  end
+
   defp keyword_to_algebra(quoted, diff_wrapper) do
     wrap_on_diff(quoted, &safe_keyword_to_algebra/2, diff_wrapper)
   end
@@ -987,7 +968,7 @@ defmodule Uptight.Assertions.Diff do
   end
 
   defp safe_key_to_algebra(key, _diff_wrapper) do
-    Macro.inspect_atom(:key, key)
+    Identifier.inspect_as_key(key)
   end
 
   defp map_item_to_algebra(quoted, diff_wrapper) do
@@ -1028,7 +1009,7 @@ defmodule Uptight.Assertions.Diff do
   end
 
   defp safe_struct_to_algebra(name, _diff_wrapper) do
-    Macro.inspect_atom(:literal, name)
+    Code.Identifier.inspect_as_atom(name)
   end
 
   defp select_list_item_algebra(list) do
@@ -1050,10 +1031,6 @@ defmodule Uptight.Assertions.Diff do
 
   # Diff helpers
 
-  defp add_hint(%{hints: hints} = env, hint) do
-    if hint in hints, do: env, else: %{env | hints: [hint | hints]}
-  end
-
   # The left side is only escaped if it is a value
   defp maybe_escape(other, %{context: :match}), do: other
   defp maybe_escape(other, _env), do: escape(other)
@@ -1063,6 +1040,9 @@ defmodule Uptight.Assertions.Diff do
   defp escape(other), do: other
 
   defp escape_pair({key, value}), do: {escape(key), escape(value)}
+
+  defp unescape({other}), do: other
+  defp unescape(other), do: other
 
   defp merge_diff(%__MODULE__{} = result1, %__MODULE__{} = result2, fun) do
     {left, right} = fun.(result1.left, result2.left, result1.right, result2.right)
