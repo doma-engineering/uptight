@@ -26,6 +26,9 @@ defmodule Uptight.AssertionError do
   end
 end
 
+require Protocol
+Protocol.derive(Jason.Encoder, Uptight.AssertionError)
+
 defmodule Uptight.MultiError do
   @moduledoc """
   Raised to signal multiple errors happened in a test case.

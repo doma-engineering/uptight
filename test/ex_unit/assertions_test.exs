@@ -29,14 +29,14 @@ defmodule Uptight.AssertionsTest do
 
   defmacrop assert_ok(arg) do
     quote do
-      A.assert {:ok, val} = ok(unquote(arg))
+      A.assert({:ok, val} = ok(unquote(arg)))
     end
   end
 
   defmacrop assert_ok_with_pin_from_quoted_var(arg) do
     quote do
       kind = :ok
-      A.assert {^kind, value} = unquote(arg)
+      A.assert({^kind, value} = unquote(arg))
     end
   end
 
@@ -44,6 +44,21 @@ defmodule Uptight.AssertionsTest do
   Record.defrecordp(:vec, x: 0, y: 0, z: 0)
 
   defguardp is_zero(zero) when zero == 0
+
+  # Doma-introduced macro which allows to propagate errors well all the way to the frontend / end users
+  test "failed assertions are encodable with Jason" do
+    y =
+      Uptight.Result.new(fn ->
+        A.assert(
+          Uptight.Result.Err.new(42) |> Uptight.Result.is_ok?(),
+          "Hello, my name is Mario."
+        )
+      end)
+      |> Jason.encode!()
+      |> Jason.decode!()
+
+    assert y["err"]["exception"]["message"] == "Hello, my name is Mario."
+  end
 
   test "assert inside macro" do
     assert_ok(42)
@@ -59,12 +74,12 @@ defmodule Uptight.AssertionsTest do
   end
 
   test "assert with truthy value" do
-    :truthy = A.assert Value.truthy()
+    :truthy = A.assert(Value.truthy())
   end
 
   test "assert with message when value is falsy" do
     try do
-      "This should never be tested" = A.assert Value.falsy(), "This should be truthy"
+      "This should never be tested" = A.assert(Value.falsy(), "This should be truthy")
     rescue
       error in [Uptight.AssertionError] ->
         "This should be truthy" = error.message
@@ -73,7 +88,7 @@ defmodule Uptight.AssertionsTest do
 
   test "assert when value evaluates to falsy" do
     try do
-      "This should never be tested" = A.assert Value.falsy()
+      "This should never be tested" = A.assert(Value.falsy())
     rescue
       error in [Uptight.AssertionError] ->
         "assert Value.falsy()" = error.expr |> Macro.to_string()
@@ -83,20 +98,22 @@ defmodule Uptight.AssertionsTest do
 
   test "assert arguments in special form" do
     true =
-      A.assert (case :ok do
-                :ok -> true
-              end)
+      A.assert(
+        case :ok do
+          :ok -> true
+        end
+      )
   end
 
   test "assert arguments semantics on function call" do
     x = 1
-    true = A.assert not_equal(x = 2, x)
+    true = A.assert(not_equal(x = 2, x))
     2 = x
   end
 
   test "assert arguments are not kept for operators" do
     try do
-      "This should never be tested" = A.assert !Value.truthy()
+      "This should never be tested" = A.assert(!Value.truthy())
     rescue
       error in [Uptight.AssertionError] ->
         false = is_list(error.args)
@@ -105,7 +122,7 @@ defmodule Uptight.AssertionsTest do
 
   test "assert with equality" do
     try do
-      "This should never be tested" = A.assert 1 + 1 == 1
+      "This should never be tested" = A.assert(1 + 1 == 1)
     rescue
       error in [Uptight.AssertionError] ->
         1 = error.right
@@ -116,7 +133,7 @@ defmodule Uptight.AssertionsTest do
 
   test "assert with equality in reverse" do
     try do
-      "This should never be tested" = A.assert 1 == 1 + 1
+      "This should never be tested" = A.assert(1 == 1 + 1)
     rescue
       error in [Uptight.AssertionError] ->
         1 = error.left
@@ -126,27 +143,27 @@ defmodule Uptight.AssertionsTest do
   end
 
   test "assert exposes nested macro variables in matches" do
-    A.assert ~l(a) = 1
-    A.assert a == 1
+    A.assert(~l(a) = 1)
+    A.assert(a == 1)
 
-    A.assert {~l(b), ~l(c)} = {2, 3}
-    A.assert b == 2
-    A.assert c == 3
+    A.assert({~l(b), ~l(c)} = {2, 3})
+    A.assert(b == 2)
+    A.assert(c == 3)
   end
 
   test "assert does not expand variables" do
-    A.assert argless_macro = 1
-    A.assert argless_macro == 1
+    A.assert(argless_macro = 1)
+    A.assert(argless_macro == 1)
   end
 
   test "refute when value is falsy" do
-    false = A.refute false
-    nil = A.refute Value.falsy()
+    false = A.refute(false)
+    nil = A.refute(Value.falsy())
   end
 
   test "refute when value evaluates to truthy" do
     try do
-      A.refute Value.truthy()
+      A.refute(Value.truthy())
       raise "refute was supposed to fail"
     rescue
       error in [Uptight.AssertionError] ->
@@ -156,25 +173,30 @@ defmodule Uptight.AssertionsTest do
   end
 
   test "assert match when equal" do
-    {2, 1} = A.assert {2, 1} = Value.tuple()
+    {2, 1} = A.assert({2, 1} = Value.tuple())
 
     # With dup vars
-    A.assert {tuple, tuple} = {Value.tuple(), Value.tuple()}
-    A.assert <<name_size::size(8), _::binary-size(name_size), " the ", _::binary>> = Value.binary()
+    A.assert({tuple, tuple} = {Value.tuple(), Value.tuple()})
+
+    A.assert(
+      <<name_size::size(8), _::binary-size(name_size), " the ", _::binary>> = Value.binary()
+    )
   end
 
   test "assert match with unused var" do
-    A.assert ExUnit.CaptureIO.capture_io(:stderr, fn ->
-             Code.eval_string("""
-             defmodule ExSample do
-               import Uptight.Assertions
+    A.assert(
+      ExUnit.CaptureIO.capture_io(:stderr, fn ->
+        Code.eval_string("""
+        defmodule ExSample do
+          import Uptight.Assertions
 
-               def run do
-                 {2, 1} = assert {2, var} = Uptight.AssertionsTest.Value.tuple()
-               end
-             end
-             """)
-           end) =~ "variable \"var\" is unused"
+          def run do
+            {2, 1} = assert {2, var} = Uptight.AssertionsTest.Value.tuple()
+          end
+        end
+        """)
+      end) =~ "variable \"var\" is unused"
+    )
   after
     :code.delete(ExSample)
     :code.purge(ExSample)
@@ -182,25 +204,25 @@ defmodule Uptight.AssertionsTest do
 
   test "assert match expands argument in match context" do
     {x, y, z} = {1, 2, 3}
-    A.assert vec(x: ^x, y: ^y) = vec(x: x, y: y, z: z)
+    A.assert(vec(x: ^x, y: ^y) = vec(x: x, y: y, z: z))
   end
 
   @test_mod_attribute %{key: :value}
   test "assert match with module attribute" do
     try do
-      A.assert {@test_mod_attribute, 1} = Value.tuple()
+      A.assert({@test_mod_attribute, 1} = Value.tuple())
     rescue
       error in [Uptight.AssertionError] ->
-        A.assert "{%{key: :value}, 1}" == Macro.to_string(error.left)
+        A.assert("{%{key: :value}, 1}" == Macro.to_string(error.left))
     end
   end
 
   test "assert match with pinned variable" do
     a = 1
-    {2, 1} = A.assert {2, ^a} = Value.tuple()
+    {2, 1} = A.assert({2, ^a} = Value.tuple())
 
     try do
-      A.assert {^a, 1} = Value.tuple()
+      A.assert({^a, 1} = Value.tuple())
     rescue
       error in [Uptight.AssertionError] ->
         "match (=) failed\n" <> "The following variables were pinned:\n" <> "  a = 1" =
@@ -212,10 +234,10 @@ defmodule Uptight.AssertionsTest do
 
   test "assert match with pinned variable from another context" do
     var!(a, Elixir) = 1
-    {2, 1} = A.assert {2, ^var!(a, Elixir)} = Value.tuple()
+    {2, 1} = A.assert({2, ^var!(a, Elixir)} = Value.tuple())
 
     try do
-      A.assert {^var!(a, Elixir), 1} = Value.tuple()
+      A.assert({^var!(a, Elixir), 1} = Value.tuple())
     rescue
       error in [Uptight.AssertionError] ->
         "match (=) failed" = error.message
@@ -224,10 +246,10 @@ defmodule Uptight.AssertionsTest do
   end
 
   test "assert match?" do
-    true = A.assert match?({2, 1}, Value.tuple())
+    true = A.assert(match?({2, 1}, Value.tuple()))
 
     try do
-      "This should never be tested" = A.assert match?({:ok, _}, error(true))
+      "This should never be tested" = A.assert(match?({:ok, _}, error(true)))
     rescue
       error in [Uptight.AssertionError] ->
         "match (match?) failed" = error.message
@@ -237,10 +259,11 @@ defmodule Uptight.AssertionsTest do
   end
 
   test "assert match? with guards" do
-    true = A.assert match?(tuple when is_tuple(tuple), Value.tuple())
+    true = A.assert(match?(tuple when is_tuple(tuple), Value.tuple()))
 
     try do
-      "This should never be tested" = A.assert match?(tuple when not is_tuple(tuple), error(true))
+      "This should never be tested" =
+        A.assert(match?(tuple when not is_tuple(tuple), error(true)))
     rescue
       error in [Uptight.AssertionError] ->
         "match (match?) failed" = error.message
@@ -252,10 +275,10 @@ defmodule Uptight.AssertionsTest do
   end
 
   test "refute match?" do
-    false = A.refute match?({1, 1}, Value.tuple())
+    false = A.refute(match?({1, 1}, Value.tuple()))
 
     try do
-      "This should never be tested" = A.refute match?({:error, _}, error(true))
+      "This should never be tested" = A.refute(match?({:error, _}, error(true)))
     rescue
       error in [ExUnit.AssertionError] ->
         "match (match?) succeeded, but should have failed" = error.message
@@ -297,7 +320,7 @@ defmodule Uptight.AssertionsTest do
   test "assert receive waits" do
     parent = self()
     spawn(fn -> send(parent, :hello) end)
-    :hello = A.assert_receive :hello
+    :hello = A.assert_receive(:hello)
   end
 
   @string "hello"
@@ -305,12 +328,12 @@ defmodule Uptight.AssertionsTest do
   test "assert receive with interpolated compile-time string" do
     parent = self()
     spawn(fn -> send(parent, "string: hello") end)
-    "string: #{@string}" = A.assert_receive "string: #{@string}"
+    "string: #{@string}" = A.assert_receive("string: #{@string}")
   end
 
   test "assert receive accepts custom failure message" do
     send(self(), :hello)
-    A.assert_receive message, 0, "failure message"
+    A.assert_receive(message, 0, "failure message")
     :hello = message
   end
 
@@ -322,7 +345,7 @@ defmodule Uptight.AssertionsTest do
     spawn(fn -> Process.send_after(parent, :hello, timeout) end)
 
     try do
-      A.assert_receive :hello, timeout
+      A.assert_receive(:hello, timeout)
     rescue
       error in [Uptight.AssertionError] ->
         true =
@@ -333,16 +356,16 @@ defmodule Uptight.AssertionsTest do
 
   test "assert_receive exposes nested macro variables" do
     send(self(), {:hello})
-    A.assert_receive {~l(a)}, 0, "failure message"
+    A.assert_receive({~l(a)}, 0, "failure message")
 
-    A.assert a == :hello
+    A.assert(a == :hello)
   end
 
   test "assert_receive raises on invalid timeout" do
     timeout = ok(1)
 
     try do
-      A.assert_receive {~l(_a)}, timeout
+      A.assert_receive({~l(_a)}, timeout)
     rescue
       error in [ArgumentError] ->
         "timeout must be a non-negative integer, got: {:ok, 1}" = error.message
@@ -352,24 +375,24 @@ defmodule Uptight.AssertionsTest do
   test "assert_receive expands argument in match context" do
     {x, y, z} = {1, 2, 3}
     send(self(), vec(x: x, y: y, z: z))
-    A.assert_receive vec(x: ^x, y: ^y)
+    A.assert_receive(vec(x: ^x, y: ^y))
   end
 
   test "assert_receive expands argument in guard context" do
     send(self(), {:ok, 0, :other})
-    A.assert_receive {:ok, val, atom} when is_zero(val) and is_atom(atom)
+    A.assert_receive({:ok, val, atom} when is_zero(val) and is_atom(atom))
   end
 
   test "assert received does not wait" do
     send(self(), :hello)
-    :hello = A.assert_received :hello
+    :hello = A.assert_received(:hello)
   end
 
   @received :hello
 
   test "assert received with module attribute" do
     send(self(), :hello)
-    :hello = A.assert_received @received
+    :hello = A.assert_received(@received)
   end
 
   test "assert received with pinned variable" do
@@ -377,7 +400,7 @@ defmodule Uptight.AssertionsTest do
     send(self(), {:status, :invalid})
 
     try do
-      "This should never be tested" = A.assert_received {:status, ^status}
+      "This should never be tested" = A.assert_received({:status, ^status})
     rescue
       error in [Uptight.AssertionError] ->
         """
@@ -397,7 +420,7 @@ defmodule Uptight.AssertionsTest do
     send(self(), {:status, :invalid, :invalid})
 
     try do
-      "This should never be tested" = A.assert_received {:status, ^status, ^status}
+      "This should never be tested" = A.assert_received({:status, ^status, ^status})
     rescue
       error in [Uptight.AssertionError] ->
         """
@@ -419,7 +442,7 @@ defmodule Uptight.AssertionsTest do
     send(self(), {:status, :invalid, :invalid})
 
     try do
-      "This should never be tested" = A.assert_received {:status, ^status, ^other_status}
+      "This should never be tested" = A.assert_received({:status, ^status, ^other_status})
     rescue
       error in [Uptight.AssertionError] ->
         """
@@ -437,7 +460,7 @@ defmodule Uptight.AssertionsTest do
 
   test "assert received when empty mailbox" do
     try do
-      "This should never be tested" = A.assert_received :hello
+      "This should never be tested" = A.assert_received(:hello)
     rescue
       error in [Uptight.AssertionError] ->
         "Assertion failed, no matching message after 0ms\nThe process mailbox is empty." =
@@ -451,7 +474,7 @@ defmodule Uptight.AssertionsTest do
     send(self(), {:message, :not_expected, :at_all})
 
     try do
-      "This should never be tested" = A.assert_received :hello
+      "This should never be tested" = A.assert_received(:hello)
     rescue
       error in [Uptight.AssertionError] ->
         """
@@ -468,7 +491,7 @@ defmodule Uptight.AssertionsTest do
     for i <- 1..11, do: send(self(), {:message, i})
 
     try do
-      "This should never be tested" = A.assert_received x when x == :hello
+      "This should never be tested" = A.assert_received(x when x == :hello)
     rescue
       error in [Uptight.AssertionError] ->
         """
@@ -483,30 +506,30 @@ defmodule Uptight.AssertionsTest do
 
   test "assert received binds variables" do
     send(self(), {:hello, :world})
-    A.assert_received {:hello, world}
+    A.assert_received({:hello, world})
     :world = world
   end
 
   test "assert received does not leak external variables used in guards" do
     send(self(), {:hello, :world})
     guard_world = :world
-    A.assert_received {:hello, world} when world == guard_world
+    A.assert_received({:hello, world} when world == guard_world)
     :world = world
   end
 
   test "refute received does not wait" do
-    false = A.refute_received :hello
+    false = A.refute_received(:hello)
   end
 
   test "refute receive waits" do
-    false = A.refute_receive :hello
+    false = A.refute_receive(:hello)
   end
 
   test "refute received when equal" do
     send(self(), :hello)
 
     try do
-      "This should never be tested" = A.refute_received :hello
+      "This should never be tested" = A.refute_received(:hello)
     rescue
       error in [ExUnit.AssertionError] ->
         "Unexpectedly received message :hello (which matched :hello)" = error.message
@@ -514,12 +537,12 @@ defmodule Uptight.AssertionsTest do
   end
 
   test "assert in when member" do
-    true = A.assert 'foo' in ['foo', 'bar']
+    true = A.assert('foo' in ['foo', 'bar'])
   end
 
   test "assert in when is not member" do
     try do
-      "This should never be tested" = A.assert 'foo' in 'bar'
+      "This should never be tested" = A.assert('foo' in 'bar')
     rescue
       error in [Uptight.AssertionError] ->
         'foo' = error.left
@@ -529,12 +552,12 @@ defmodule Uptight.AssertionsTest do
   end
 
   test "refute in when is not member" do
-    false = A.refute 'baz' in ['foo', 'bar']
+    false = A.refute('baz' in ['foo', 'bar'])
   end
 
   test "refute in when is member" do
     try do
-      "This should never be tested" = A.refute 'foo' in ['foo', 'bar']
+      "This should never be tested" = A.refute('foo' in ['foo', 'bar'])
     rescue
       error in [Uptight.AssertionError] ->
         'foo' = error.left
@@ -544,17 +567,17 @@ defmodule Uptight.AssertionsTest do
   end
 
   test "assert match" do
-    {:ok, true} = A.assert {:ok, _} = ok(true)
+    {:ok, true} = A.assert({:ok, _} = ok(true))
   end
 
   test "assert match with bitstrings" do
-    "foobar" = A.assert "foo" <> bar = "foobar"
+    "foobar" = A.assert("foo" <> bar = "foobar")
     "bar" = bar
   end
 
   test "assert match when no match" do
     try do
-      A.assert {:ok, _} = error(true)
+      A.assert({:ok, _} = error(true))
     rescue
       error in [Uptight.AssertionError] ->
         "match (=) failed" = error.message
@@ -565,7 +588,7 @@ defmodule Uptight.AssertionsTest do
 
   test "assert match when falsy but not match" do
     try do
-      A.assert {:ok, _x} = nil
+      A.assert({:ok, _x} = nil)
     rescue
       # NB! This is a clear hint that there's a bug somewhere.
       # Other stuff throws ExUnit.AssertionError, whereas plain assert throws Uptight version.
@@ -579,7 +602,7 @@ defmodule Uptight.AssertionsTest do
 
   test "assert match when falsy" do
     try do
-      A.assert _x = nil
+      A.assert(_x = nil)
     rescue
       error in [Uptight.AssertionError] ->
         "Expected truthy, got nil" = error.message
@@ -589,7 +612,7 @@ defmodule Uptight.AssertionsTest do
 
   test "refute match when no match" do
     try do
-      "This should never be tested" = A.refute _ = ok(true)
+      "This should never be tested" = A.refute(_ = ok(true))
     rescue
       error in [Uptight.AssertionError] ->
         "refute _ = ok(true)" = Macro.to_string(error.expr)
@@ -598,12 +621,12 @@ defmodule Uptight.AssertionsTest do
   end
 
   test "assert regex match" do
-    true = A.assert "foo" =~ ~r/o/
+    true = A.assert("foo" =~ ~r/o/)
   end
 
   test "assert regex match when no match" do
     try do
-      "This should never be tested" = A.assert "foo" =~ ~r/a/
+      "This should never be tested" = A.assert("foo" =~ ~r/a/)
     rescue
       error in [Uptight.AssertionError] ->
         "foo" = error.left
@@ -612,12 +635,12 @@ defmodule Uptight.AssertionsTest do
   end
 
   test "refute regex match" do
-    false = A.refute "foo" =~ ~r/a/
+    false = A.refute("foo" =~ ~r/a/)
   end
 
   test "refute regex match when match" do
     try do
-      "This should never be tested" = A.refute "foo" =~ ~r/o/
+      "This should never be tested" = A.refute("foo" =~ ~r/o/)
     rescue
       error in [Uptight.AssertionError] ->
         "foo" = error.left
@@ -626,14 +649,14 @@ defmodule Uptight.AssertionsTest do
   end
 
   test "assert raise with no error" do
-    "This should never be tested" = A.assert_raise ArgumentError, fn -> nil end
+    "This should never be tested" = A.assert_raise(ArgumentError, fn -> nil end)
   rescue
     error in [Uptight.AssertionError] ->
       "Expected exception ArgumentError but nothing was raised" = error.message
   end
 
   test "assert raise with error" do
-    error = A.assert_raise ArgumentError, fn -> raise ArgumentError, "test error" end
+    error = A.assert_raise(ArgumentError, fn -> raise ArgumentError, "test error" end)
     "test error" = error.message
   end
 
@@ -641,7 +664,7 @@ defmodule Uptight.AssertionsTest do
 
   test "assert raise with some other error" do
     "This should never be tested" =
-      A.assert_raise ArgumentError, fn -> Not.Defined.function(1, 2, 3) end
+      A.assert_raise(ArgumentError, fn -> Not.Defined.function(1, 2, 3) end)
   rescue
     error in [Uptight.AssertionError] ->
       "Expected exception ArgumentError but got UndefinedFunctionError " <>
@@ -651,16 +674,16 @@ defmodule Uptight.AssertionsTest do
 
   test "assert raise with some other error includes stacktrace from original error" do
     "This should never be tested" =
-      A.assert_raise ArgumentError, fn -> Not.Defined.function(1, 2, 3) end
+      A.assert_raise(ArgumentError, fn -> Not.Defined.function(1, 2, 3) end)
   rescue
     Uptight.AssertionError ->
       [{Not.Defined, :function, [1, 2, 3], _} | _] = __STACKTRACE__
   end
 
   test "assert raise with Erlang error" do
-    A.assert_raise SyntaxError, fn ->
+    A.assert_raise(SyntaxError, fn ->
       List.flatten(1)
-    end
+    end)
   rescue
     error in [Uptight.AssertionError] ->
       "Expected exception SyntaxError but got FunctionClauseError (no function clause matching in :lists.flatten/1)" =
@@ -668,9 +691,9 @@ defmodule Uptight.AssertionsTest do
   end
 
   test "assert raise comparing messages (for equality)" do
-    A.assert_raise RuntimeError, "foo", fn ->
+    A.assert_raise(RuntimeError, "foo", fn ->
       raise RuntimeError, "bar"
-    end
+    end)
   rescue
     error in [Uptight.AssertionError] ->
       """
@@ -683,9 +706,9 @@ defmodule Uptight.AssertionsTest do
   end
 
   test "assert raise comparing messages (with a regex)" do
-    A.assert_raise RuntimeError, ~r/ba[zk]/, fn ->
+    A.assert_raise(RuntimeError, ~r/ba[zk]/, fn ->
       raise RuntimeError, "bar"
-    end
+    end)
   rescue
     error in [Uptight.AssertionError] ->
       """
@@ -698,9 +721,9 @@ defmodule Uptight.AssertionsTest do
   end
 
   test "assert raise with an exception with bad message/1 implementation" do
-    A.assert_raise BrokenError, fn ->
+    A.assert_raise(BrokenError, fn ->
       raise BrokenError
-    end
+    end)
   rescue
     error in [Uptight.AssertionError] ->
       """
@@ -711,11 +734,11 @@ defmodule Uptight.AssertionsTest do
   end
 
   test "assert greater-than operator" do
-    true = A.assert 2 > 1
+    true = A.assert(2 > 1)
   end
 
   test "assert greater-than operator error" do
-    "This should never be tested" = A.assert 1 > 2
+    "This should never be tested" = A.assert(1 > 2)
   rescue
     error in [Uptight.AssertionError] ->
       1 = error.left
@@ -724,11 +747,11 @@ defmodule Uptight.AssertionsTest do
   end
 
   test "assert less or equal than operator" do
-    true = A.assert 1 <= 2
+    true = A.assert(1 <= 2)
   end
 
   test "assert less or equal than operator error" do
-    "This should never be tested" = A.assert 2 <= 1
+    "This should never be tested" = A.assert(2 <= 1)
   rescue
     error in [Uptight.AssertionError] ->
       "assert 2 <= 1" = Macro.to_string(error.expr)
@@ -738,11 +761,11 @@ defmodule Uptight.AssertionsTest do
 
   test "assert operator with expressions" do
     greater = 5
-    true = A.assert 1 + 2 < greater
+    true = A.assert(1 + 2 < greater)
   end
 
   test "assert operator with custom message" do
-    "This should never be tested" = A.assert 1 > 2, "assertion"
+    "This should never be tested" = A.assert(1 > 2, "assertion")
   rescue
     error in [Uptight.AssertionError] ->
       "assertion" = error.message
@@ -750,7 +773,7 @@ defmodule Uptight.AssertionsTest do
 
   test "assert lack of equality" do
     try do
-      "This should never be tested" = A.assert "one" != "one"
+      "This should never be tested" = A.assert("one" != "one")
     rescue
       error in [Uptight.AssertionError] ->
         "Assertion with != failed, both sides are exactly equal" = error.message
@@ -758,7 +781,7 @@ defmodule Uptight.AssertionsTest do
     end
 
     try do
-      "This should never be tested" = A.assert 2 != 2.0
+      "This should never be tested" = A.assert(2 != 2.0)
     rescue
       error in [Uptight.AssertionError] ->
         "Assertion with != failed" = error.message
@@ -769,7 +792,7 @@ defmodule Uptight.AssertionsTest do
 
   test "refute equality" do
     try do
-      "This should never be tested" = A.refute "one" == "one"
+      "This should never be tested" = A.refute("one" == "one")
     rescue
       error in [Uptight.AssertionError] ->
         "Refute with == failed, both sides are exactly equal" = error.message
@@ -777,7 +800,7 @@ defmodule Uptight.AssertionsTest do
     end
 
     try do
-      "This should never be tested" = A.refute 2 == 2.0
+      "This should never be tested" = A.refute(2 == 2.0)
     rescue
       error in [Uptight.AssertionError] ->
         "Refute with == failed" = error.message
@@ -791,9 +814,9 @@ defmodule Uptight.AssertionsTest do
   end
 
   test "assert in delta raises when passing a negative delta" do
-    A.assert_raise ArgumentError, fn ->
+    A.assert_raise(ArgumentError, fn ->
       A.assert_in_delta(1.1, 1.2, -0.2)
-    end
+    end)
   end
 
   test "assert in delta works with equal values and a delta of zero" do
@@ -890,7 +913,7 @@ defmodule Uptight.AssertionsTest do
   end
 
   test "AssertionError.message/1 is nicely formatted" do
-    A.assert :a = :b
+    A.assert(:a = :b)
   rescue
     error in [Uptight.AssertionError] ->
       """
