@@ -26,8 +26,16 @@ defmodule Uptight.AssertionError do
   end
 end
 
-require Protocol
-Protocol.derive(Jason.Encoder, Uptight.AssertionError)
+defimpl Jason.Encoder, for: Uptight.AssertionError do
+  def encode(x, opts) do
+    xkv = Map.delete(x, :__struct__)
+
+    Map.merge(xkv |> Enum.map(fn {k, v} -> {k, "#{inspect(v)}"} end) |> Enum.into(%{}), %{
+      :message => Map.get(x, :message, "Unknown error.")
+    })
+    |> Jason.Encode.map(opts)
+  end
+end
 
 defmodule Uptight.MultiError do
   @moduledoc """
