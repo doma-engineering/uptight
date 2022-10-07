@@ -58,7 +58,7 @@ defmodule Uptight.Base do
     # There must be some `ap`/`apply` trick here
     %Ok{ok: res} =
       [&mk16/1, &mk32/1, &mk_url/1, &mk64/1]
-      |> left_fold(Err.new([]), fn acc, f ->
+      |> left_fold(:cont, fn acc, f ->
         case acc do
           y = %Ok{} -> y
           _ -> f.(x)

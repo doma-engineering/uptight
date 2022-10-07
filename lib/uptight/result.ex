@@ -13,7 +13,7 @@ defmodule Uptight.Result do
   require Logger
 
   defsum do
-    defdata(Err :: any())
+    defdata(Err :: Uptight.Trace.t())
     defdata(Ok :: any())
   end
 
