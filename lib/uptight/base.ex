@@ -7,7 +7,7 @@ defmodule Uptight.Base do
   import Witchcraft.Foldable
   alias Uptight.Binary
   alias Uptight.Result
-  alias Uptight.Result.{Ok, Err}
+  alias Uptight.Result.{Ok}
   alias Uptight.Base.{Sixteen, ThirtyTwo, SixtyFour, Urlsafe}
 
   @dialyzer {:no_return, {:new, 0}}
