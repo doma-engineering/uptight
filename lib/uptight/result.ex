@@ -8,12 +8,18 @@ defmodule Uptight.Result do
   """
 
   import Algae
-  alias Uptight.Result.{Err, Ok}
   alias Uptight.Trace
-  require Logger
 
   defsum do
-    defdata(Err :: Uptight.Trace.t())
+    defdata(
+      Err :: %{
+        required(:exception) => any(),
+        required(:stacktrace) => list(any()),
+        required(:__struct__) => Elixir.Uptight.Trace
+      }
+    )
+
+    # defdata(Err :: any())
     defdata(Ok :: any())
   end
 
@@ -39,11 +45,11 @@ defmodule Uptight.Result do
   @spec new((() -> any())) :: t()
   def new(f) do
     try do
-      Ok.new(f.())
+      __MODULE__.Ok.new(f.())
     rescue
       e ->
         trace = Trace.new(e, __STACKTRACE__)
-        Err.new(trace)
+        __MODULE__.Err.new(trace)
     end
   end
 
@@ -51,34 +57,35 @@ defmodule Uptight.Result do
   def from_ok(%__MODULE__.Ok{ok: x}), do: x
 
   def from_ok(err) do
+    require Logger
     Logger.error("#{inspect(err, pretty: true)}")
     :error = err
   end
 
   @spec is_err?(__MODULE__.t()) :: boolean()
-  def is_err?(_ = %Err{}), do: true
+  def is_err?(_ = %__MODULE__.Err{}), do: true
   def is_err?(_), do: false
 
   @spec is_ok?(__MODULE__.t()) :: boolean()
-  def is_ok?(_ = %Ok{}), do: true
+  def is_ok?(_ = %__MODULE__.Ok{}), do: true
   def is_ok?(_), do: false
 
   @spec cont(__MODULE__.t(), (any() -> any())) :: __MODULE__.t()
-  def cont(%Ok{ok: x}, f) do
+  def cont(%__MODULE__.Ok{ok: x}, f) do
     case f.(x) do
-      %Err{} = e -> e
-      otherwise -> %Ok{ok: otherwise}
+      %__MODULE__.Err{} = e -> e
+      otherwise -> %__MODULE__.Ok{ok: otherwise}
     end
   end
 
-  def cont(e = %Err{}, _), do: e
+  def cont(e = %__MODULE__.Err{}, _), do: e
 
   @spec cont_end(__MODULE__.t()) :: __MODULE__.t()
-  def cont_end(res = %Ok{}) do
+  def cont_end(res = %__MODULE__.Ok{}) do
     res |> from_ok()
   end
 
-  def cont_end(err = %Err{}) do
+  def cont_end(err = %__MODULE__.Err{}) do
     err
   end
 
