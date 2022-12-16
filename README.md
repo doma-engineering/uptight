@@ -27,7 +27,7 @@ In absence of blessed way to do so, I have pulled out `assert` from `ExUnit` and
   import Uptight.Assertions
   alias Uptight.Result
 
-  @spec grant_root_invite() :: Result.t()
+  @spec grant_invite(email, nickname) :: Result.t()
   def grant_root_invite() do
     Result.new(fn ->
       invite = get_root_invite()
