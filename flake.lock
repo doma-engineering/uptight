@@ -1,6 +1,55 @@
 {
   "nodes": {
+    "flake-utils": {
+      "locked": {
+        "lastModified": 1676283394,
+        "narHash": "sha256-XX2f9c3iySLCw54rJ/CZs+ZK6IQy7GXNY4nSOyu2QG4=",
+        "owner": "numtide",
+        "repo": "flake-utils",
+        "rev": "3db36a8b464d0c4532ba1c7dda728f4576d6d073",
+        "type": "github"
+      },
+      "original": {
+        "id": "flake-utils",
+        "type": "indirect"
+      }
+    },
+    "goo": {
+      "inputs": {
+        "flake-utils": "flake-utils",
+        "nixpkgs": "nixpkgs"
+      },
+      "locked": {
+        "lastModified": 1677565088,
+        "narHash": "sha256-Ijp3VQvir87NiPCJ0X5J7P8b1Z7VefhULkmMnq25nSY=",
+        "owner": "doma-engineering",
+        "repo": "goo-1.14",
+        "rev": "d884b4f45763dcdc71079bb23d318325b927d430",
+        "type": "github"
+      },
+      "original": {
+        "owner": "doma-engineering",
+        "ref": "v1.14",
+        "repo": "goo-1.14",
+        "type": "github"
+      }
+    },
     "nixpkgs": {
+      "locked": {
+        "lastModified": 1674668503,
+        "narHash": "sha256-hom+S6vQ99jkzGtCow2uy0EqJNrP1yiaqTAOUmxZZkw=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "79a606608ea7e8211decfe67477e2e7d88840c5f",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "nixpkgs_2": {
       "locked": {
         "lastModified": 1653002331,
         "narHash": "sha256-3Umc7QNGuNGW/JX+BcIxknMrvp66pPC/Zlm0bp65/Sk=",
@@ -17,7 +66,8 @@
     },
     "root": {
       "inputs": {
-        "nixpkgs": "nixpkgs"
+        "goo": "goo",
+        "nixpkgs": "nixpkgs_2"
       }
     }
   },

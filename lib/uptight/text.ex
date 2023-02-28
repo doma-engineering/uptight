@@ -13,6 +13,8 @@ defmodule Uptight.Text do
   alias Uptight.Result
   defdata(binary())
 
+  @dialyzer {:nowarn_function, new: 1}
+
   @doc """
   Defensive constructor.
 
@@ -29,7 +31,7 @@ defmodule Uptight.Text do
       iex> Uptight.Text.new("hello") |> Uptight.Result.from_ok() |> Witchcraft.Foldable.right_fold("", fn x, acc -> x <> acc end)
       "olleh"
   """
-  @spec new(binary()) :: Result.t()
+  # @spec new(binary()) :: Result.t()
   def new(x) do
     Result.new(fn -> new!(x) end)
   end

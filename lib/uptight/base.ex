@@ -15,23 +15,23 @@ defmodule Uptight.Base do
 
   defsum do
     defdata Sixteen do
-      encoded :: String.t()
-      raw :: binary()
+      encoded :: String.t() \\ ""
+      raw :: binary() \\ <<>>
     end
 
     defdata ThirtyTwo do
-      encoded :: String.t()
-      raw :: binary()
+      encoded :: String.t() \\ ""
+      raw :: binary() \\ <<>>
     end
 
     defdata SixtyFour do
-      encoded :: String.t()
-      raw :: binary()
+      encoded :: String.t() \\ ""
+      raw :: binary() \\ <<>>
     end
 
     defdata Urlsafe do
-      encoded :: String.t()
-      raw :: binary()
+      encoded :: String.t() \\ ""
+      raw :: binary() \\ <<>>
     end
   end
 

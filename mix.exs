@@ -4,7 +4,7 @@ defmodule Uptight.MixProject do
   def project do
     [
       app: :uptight,
-      version: "0.2.9-rc",
+      version: "0.2.11-rc",
       description:
         "Tools for tighter (more static) programming in Elixir with a particular focus on distinguishing types of binary data and pushing offensive programming capabilities to their limits.",
       elixir: "~> 1.13",
@@ -18,7 +18,7 @@ defmodule Uptight.MixProject do
   # Run "mix help compile.app" to learn about applications.
   def application do
     [
-      extra_applications: [:logger]
+      extra_applications: [:logger, :jason]
     ]
   end
 
@@ -29,9 +29,9 @@ defmodule Uptight.MixProject do
       {:ex_doc, ">= 0.0.0", only: :dev, runtime: false},
       {:dialyxir, "~> 1.1", only: :dev, runtime: false},
       {:jason, "~> 1.3"},
-      {:doma_witchcraft, "~> 1.0.6-doma"},
-      {:doma_algae, "~> 1.3.2-doma"},
-      {:doma_quark, "~> 2.3.3-doma"},
+      {:quark_goo, github: "doma-engineering/quark-goo", branch: "main"},
+      {:algae_goo, github: "doma-engineering/algae-goo", branch: "main"},
+      {:witchcraft_goo, github: "doma-engineering/witchcraft-goo", branch: "main"}
     ]
   end
 

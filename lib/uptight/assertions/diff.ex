@@ -14,7 +14,6 @@ defmodule Uptight.Assertions.Diff do
   # literal and doesn't contain meta, the `:diff` meta will be placed in a
   # wrapping block.
 
-  alias Code.Identifier
   alias Inspect.Algebra
 
   defstruct equivalent?: true,
@@ -968,7 +967,7 @@ defmodule Uptight.Assertions.Diff do
   end
 
   defp safe_key_to_algebra(key, _diff_wrapper) do
-    Identifier.inspect_as_key(key)
+    Macro.inspect_atom(:key, key)
   end
 
   defp map_item_to_algebra(quoted, diff_wrapper) do
@@ -1008,8 +1007,12 @@ defmodule Uptight.Assertions.Diff do
     wrap_on_diff(quoted, &safe_struct_to_algebra/2, diff_wrapper)
   end
 
+  defp safe_struct_to_algebra({:^, _, _} = name, _diff_wrapper) do
+    Macro.to_string(name)
+  end
+
   defp safe_struct_to_algebra(name, _diff_wrapper) do
-    Code.Identifier.inspect_as_atom(name)
+    Macro.inspect_atom(:literal, name)
   end
 
   defp select_list_item_algebra(list) do

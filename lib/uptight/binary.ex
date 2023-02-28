@@ -6,7 +6,9 @@ defmodule Uptight.Binary do
   import Algae
   defdata(binary())
 
-  @spec new(binary) :: Result.t()
+  @dialyzer {:nowarn_function, new: 1}
+
+  # @spec new(binary) :: Result.t()
   def new(<<x::binary>>) do
     Result.new(fn -> new!(x) end)
   end
