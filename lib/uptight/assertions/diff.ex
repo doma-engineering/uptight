@@ -719,10 +719,14 @@ defmodule Uptight.Assertions.Diff do
   # Strings
 
   defp diff_string(left, right, delimiter, env) do
-    {escaped_left, _} = Code.Identifier.escape(left, delimiter)
-    {escaped_right, _} = Code.Identifier.escape(right, delimiter)
-    left = IO.iodata_to_binary(escaped_left)
-    right = IO.iodata_to_binary(escaped_right)
+    {left, right} =
+      if delimiter == :none do
+        {left, right}
+      else
+        {escaped_left, _} = Code.Identifier.escape(left, delimiter)
+        {escaped_right, _} = Code.Identifier.escape(right, delimiter)
+        {IO.iodata_to_binary(escaped_left), right = IO.iodata_to_binary(escaped_right)}
+      end
 
     diff =
       cond do
