@@ -194,8 +194,9 @@ end
 ###########
 
 definst Witchcraft.Functor, for: Uptight.Result.Err do
+  # Functor.map now stops computation when it encounters an error
   @spec map(Uptight.Result.Err.t(), (any() -> any())) :: Uptight.Result.Err.t()
-  def map(%{err: x}, f), do: x |> f.() |> Err.new()
+  def map(%{err: x}, _f), do: %Err{err: x}
 end
 
 definst Witchcraft.Functor, for: Uptight.Result.Ok do
@@ -300,3 +301,37 @@ end
 
 definst(Witchcraft.Monad, for: Uptight.Result.Err)
 definst(Witchcraft.Monad, for: Uptight.Result.Ok)
+
+##########
+# Extend #
+##########
+
+definst Witchcraft.Extend, for: Uptight.Result.Err do
+  @spec nest(Uptigight.Result.t()) :: Uptight.Result.t()
+  def nest(%Uptight.Result.Err{err: x}),
+    do: %Uptight.Result.Err{
+      err: %Uptight.Result.Err{err: x}
+    }
+end
+
+definst Witchcraft.Extend, for: Uptight.Result.Ok do
+  @spec nest(Uptigight.Result.t()) :: Uptight.Result.t()
+  def nest(%Uptight.Result.Ok{ok: x}),
+    do: %Uptight.Result.Ok{
+      ok: %Uptight.Result.Ok{ok: x}
+    }
+end
+
+###########
+# Comonad #
+###########
+
+definst Witchcraft.Comonad, for: Uptight.Result.Err do
+  @spec extract(Uptight.Result.Err.t()) :: any()
+  def extract(%Uptight.Result.Err{err: x}), do: x
+end
+
+definst Witchcraft.Comonad, for: Uptight.Result.Ok do
+  @spec extract(Uptight.Result.Ok.t()) :: any()
+  def extract(%Uptight.Result.Ok{ok: x}), do: x
+end
