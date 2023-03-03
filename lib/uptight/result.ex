@@ -10,17 +10,26 @@ defmodule Uptight.Result do
   import Algae
   alias Uptight.Trace
 
-  defsum do
-    defdata(
-      Err :: %{
-        required(:exception) => any(),
-        required(:stacktrace) => list(any()),
-        required(:__struct__) => Elixir.Uptight.Trace
-      }
-    )
+  @type err(e_t) :: %{
+          required(:__struct__) => Elixir.Uptight.Result.Err,
+          required(:err) => %{
+            required(:exception) => e_t,
+            required(:stacktrace) => list(any()),
+            required(:__struct__) => Elixir.Uptight.Trace
+          }
+        }
 
-    # defdata(Err :: any())
-    defdata(Ok :: any())
+  @type ok(a_t) :: %{
+          required(:__struct__) => Elixir.Uptight.Result.Ok,
+          required(:ok) => a_t
+        }
+
+  @type sum(e_t, a_t) :: err(e_t) | ok(a_t)
+
+  defsum do
+    defdata(Err :: Uptight.Result.err(any()))
+
+    defdata(Ok :: Uptight.Result.ok(any()))
   end
 
   @doc """
@@ -49,7 +58,7 @@ defmodule Uptight.Result do
     rescue
       e ->
         trace = Trace.new(e, __STACKTRACE__)
-        __MODULE__.Err.new(trace)
+        %__MODULE__.Err{err: trace}
     end
   end
 
@@ -70,6 +79,14 @@ defmodule Uptight.Result do
   def is_ok?(_ = %__MODULE__.Ok{}), do: true
   def is_ok?(_), do: false
 
+  # TODO: Implement this `cont` in terms of `Witchcraft.Bifunctor`.
+  #
+  # Reasoning:
+  # This continuation operator must have some abstract counterpart.
+  # In Haskell it would have had the type: cont :: (Either e a) -> (a -> Either e b) -> Either e b
+  # Which generalises to bimap, which has the type: bimap :: (a -> c) -> (b -> d) -> Either a b -> Either c d
+  # This `cont` function is, namely, a special case of bimap, where the first function is the identity function.
+  # Also known as `second` in Data.Bifunctor.
   @spec cont(__MODULE__.t(), (any() -> any())) :: __MODULE__.t()
   def cont(%__MODULE__.Ok{ok: x}, f) do
     case f.(x) do
@@ -89,7 +106,7 @@ defmodule Uptight.Result do
     err
   end
 
-  @spec new_ok :: __MODULE__.Ok.t()
+  @spec new_ok :: __MODULE__.ok(true)
   def new_ok() do
     %__MODULE__.Ok{ok: true}
   end
@@ -307,7 +324,7 @@ definst(Witchcraft.Monad, for: Uptight.Result.Ok)
 ##########
 
 definst Witchcraft.Extend, for: Uptight.Result.Err do
-  @spec nest(Uptigight.Result.t()) :: Uptight.Result.t()
+  @spec nest(Uptight.Result.Err.t()) :: Uptight.Result.Err.t()
   def nest(%Uptight.Result.Err{err: x}),
     do: %Uptight.Result.Err{
       err: %Uptight.Result.Err{err: x}
@@ -315,7 +332,7 @@ definst Witchcraft.Extend, for: Uptight.Result.Err do
 end
 
 definst Witchcraft.Extend, for: Uptight.Result.Ok do
-  @spec nest(Uptigight.Result.t()) :: Uptight.Result.t()
+  @spec nest(Uptight.Result.Ok.t()) :: Uptight.Result.Ok.t()
   def nest(%Uptight.Result.Ok{ok: x}),
     do: %Uptight.Result.Ok{
       ok: %Uptight.Result.Ok{ok: x}
