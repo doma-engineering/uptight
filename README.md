@@ -3,7 +3,7 @@
 Uptight is an infectious (as in IO monad) library answers two pain points of Elixir programming:
 
  1. Insufficiently tight types when it comes to distinguishing texts from binaries, as well as detachment of Base-encodings from binaries.
- 2. Lack of an iron-gauntlet approach to errors and failure in Erlang and Elixir.
+ 2. Lack of an iron-gauntlet approach to errors and encoding fault in Erlang and Elixir.
 
 To address (1), we present the following types:
 
