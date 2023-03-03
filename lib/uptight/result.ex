@@ -298,7 +298,5 @@ end
 # Monad #
 #########
 
-# Monad breaks everything: https://github.com/witchcrafters/witchcraft/issues/82
-
-# definst Witchcraft.Monad, for: Uptight.Result.Err
-# definst Witchcraft.Monad, for: Uptight.Result.Ok
+definst(Witchcraft.Monad, for: Uptight.Result.Err)
+definst(Witchcraft.Monad, for: Uptight.Result.Ok)

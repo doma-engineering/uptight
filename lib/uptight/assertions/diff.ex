@@ -725,7 +725,7 @@ defmodule Uptight.Assertions.Diff do
       else
         {escaped_left, _} = Code.Identifier.escape(left, delimiter)
         {escaped_right, _} = Code.Identifier.escape(right, delimiter)
-        {IO.iodata_to_binary(escaped_left), right = IO.iodata_to_binary(escaped_right)}
+        {IO.iodata_to_binary(escaped_left), IO.iodata_to_binary(escaped_right)}
       end
 
     diff =
