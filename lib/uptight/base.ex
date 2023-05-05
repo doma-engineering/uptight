@@ -172,3 +172,32 @@ defimpl Jason.Encoder, for: Uptight.Base.Urlsafe do
     Jason.Encode.string(Map.get(value, :encoded), opts)
   end
 end
+
+### String.Chars ###
+defimpl Jason.Encoder, for: Uptight.Base.Sixteen do
+  @spec to_string(Uptight.Base.Sixteen.t()) :: String.t()
+  def to_string(value) do
+    Map.get(value, :encoded)
+  end
+end
+
+defimpl Jason.Encoder, for: Uptight.Base.ThirtyTwo do
+  @spec to_string(Uptight.Base.ThirtyTwo.t()) :: String.t()
+  def to_string(value) do
+    Map.get(value, :encoded)
+  end
+end
+
+defimpl Jason.Encoder, for: Uptight.Base.SixtyFour do
+  @spec to_string(Uptight.Base.SixtyFour.t()) :: String.t()
+  def to_string(value) do
+    Map.get(value, :encoded)
+  end
+end
+
+defimpl String.Chars, for: Uptight.Base.Urlsafe do
+  @spec to_string(Uptight.Base.Urlsafe.t()) :: String.t()
+  def to_string(value) do
+    Map.get(value, :encoded)
+  end
+end

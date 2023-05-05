@@ -75,6 +75,13 @@ defimpl Jason.Encoder, for: Uptight.Text do
   end
 end
 
+defimpl String.Chars, for: Uptight.Text do
+  @spec to_string(Uptight.Text.t()) :: String.t()
+  def to_string(value) do
+    Map.get(value, :text)
+  end
+end
+
 #############
 # Generator #
 #############
