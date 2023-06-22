@@ -13,13 +13,13 @@ defmodule Uptight.Text.Urlencoded do
 
   ## Examples
       iex> Uptight.Text.Urlencoded.new(<<5555>>) |> Uptight.Result.is_err?()
-      true
+      false
 
       iex> Uptight.Text.Urlencoded.new("goo")
       %Uptight.Result.Ok{ok: %Uptight.Text.Urlencoded{encoded: "goo", raw: <<131, 109, 0, 0, 0, 3, 103, 111, 111>>}}
 
       iex> Uptight.Text.Urlencoded.new(<<0xF7>>) |> Uptight.Result.is_err?()
-      true
+      false
 
       iex> Uptight.Text.Urlencoded.new("hello") |> Uptight.Result.from_ok() |> Witchcraft.Foldable.right_fold("", fn x, acc -> x <> acc end)
       "olleh"
@@ -45,23 +45,11 @@ defmodule Uptight.Text.Urlencoded do
   """
   @spec new!(binary()) :: __MODULE__.t()
   def new!(<<x::binary>>) do
-    new_do!(x, x) |> (&%__MODULE__{encoded: &1, raw: :erlang.term_to_binary(&1)}).()
+    %__MODULE__{encoded: URI.encode(x), raw: :erlang.term_to_binary(x)}
   end
 
   @spec un(__MODULE__.t()) :: String.t()
   def un(%__MODULE__{encoded: e}), do: e
-
-  defp new_do!(<<_tick::utf8, rest::bits>>, x) do
-    new_do!(rest, x)
-  end
-
-  defp new_do!(<<>>, x) do
-    x
-  end
-
-  defp new_do!(fail, _x) do
-    raise fail
-  end
 end
 
 require Protocol
