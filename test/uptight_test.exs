@@ -6,6 +6,7 @@ defmodule UptightTest do
   doctest Uptight.Result
   doctest Uptight.Base
   doctest Uptight.Text
+  doctest Uptight.Text.Urlencoded
   doctest Uptight.Fold
   doctest Uptight.Assertions
 end

@@ -28,7 +28,6 @@ defmodule Uptight.Result do
 
   defsum do
     defdata(Err :: Uptight.Result.err(any()))
-
     defdata(Ok :: Uptight.Result.ok(any()))
   end
 
