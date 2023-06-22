@@ -13,11 +13,11 @@ defmodule Uptight.Text.Urlencoded do
   Defensive constructor.
 
   ## Examples
-    iex> Uptight.Text.Urlencoded.new(Uptight.Text.new!("上海+中國"))
+    iex> Uptight.Text.Urlencoded.new(Uptight.Text.new!("上~海+中.國"))
     %Uptight.Result.Ok{ok:
       %Uptight.Text.Urlencoded{
-        encoded: %Uptight.Text{text: "%E4%B8%8A%E6%B5%B7%2B%E4%B8%AD%E5%9C%8B"},
-        raw: %Uptight.Text{text: "上海+中國"}
+        encoded: %Uptight.Text{text: "%E4%B8%8A~%E6%B5%B7%2B%E4%B8%AD.%E5%9C%8B"},
+        raw: %Uptight.Text{text: "上~海+中.國"}
       }
     }
   """
