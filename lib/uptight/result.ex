@@ -26,9 +26,13 @@ defmodule Uptight.Result do
 
   @type sum(e_t, a_t) :: err(e_t) | ok(a_t)
 
-  defsum do
-    defdata(Err :: Uptight.Result.err(any()))
-    defdata(Ok :: Uptight.Result.ok(any()))
+  @type r :: any()
+  @type l :: any()
+  @type y :: any()
+
+  defunion do
+    defprod(Err :: Uptight.Result.err(any()))
+    defprod(Ok :: Uptight.Result.ok(any()))
   end
 
   @doc """
@@ -50,10 +54,10 @@ defmodule Uptight.Result do
       iex> Uptight.Result.new(fn () -> 42 end) |> Uptight.Result.is_err?()
       false
   """
-  @spec new((() -> any())) :: t()
+  @spec new((() -> y)) :: sum(any(), any())
   def new(f) do
     try do
-      __MODULE__.Ok.new(f.())
+      %__MODULE__.Ok{ok: f.()}
     rescue
       e ->
         trace = Trace.new(e, __STACKTRACE__)
@@ -61,7 +65,10 @@ defmodule Uptight.Result do
     end
   end
 
-  @spec from_ok(__MODULE__.t()) :: any()
+  @spec ok(y) :: ok(y)
+  def ok(x), do: %__MODULE__.Ok{ok: x}
+
+  @spec from_ok(__MODULE__.sum(l, r)) :: r | __MODULE__.err(l)
   def from_ok(%__MODULE__.Ok{ok: x}), do: x
 
   def from_ok(err) do
@@ -69,6 +76,10 @@ defmodule Uptight.Result do
     Logger.error("#{inspect(err, pretty: true)}")
     :error = err
   end
+
+  @spec from_ok(__MODULE__.sum(l, r), y) :: r | y
+  def from_ok(%__MODULE__.Ok{ok: r}, _), do: r
+  def from_ok(_, y), do: y
 
   @spec is_err?(__MODULE__.t()) :: boolean()
   def is_err?(_ = %__MODULE__.Err{}), do: true
@@ -118,7 +129,7 @@ require Protocol
 Protocol.derive(Jason.Encoder, Uptight.Result.Ok)
 Protocol.derive(Jason.Encoder, Uptight.Result.Err)
 
-# RELEVANT DERIVATIONS
+# SOMEWHAT RELEVANT DERIVATIONS
 
 Protocol.derive(Jason.Encoder, Algae.Maybe.Just)
 Protocol.derive(Jason.Encoder, Algae.Maybe.Nothing)
@@ -132,15 +143,33 @@ Protocol.derive(Jason.Encoder, Algae.Either.Right)
 defimpl TypeClass.Property.Generator, for: Uptight.Result.Err do
   @spec generate(Uptight.Result.Err.t()) :: Uptight.Result.Err.t()
   def generate(_) do
-    [] |> TypeClass.Property.Generator.generate() |> Err.new()
+    %Uptight.Result.Err{err: [] |> TypeClass.Property.Generator.generate()}
   end
 end
 
 defimpl TypeClass.Property.Generator, for: Uptight.Result.Ok do
   @spec generate(Uptight.Result.Ok.t()) :: Uptight.Result.Ok.t()
   def generate(_) do
-    [] |> TypeClass.Property.Generator.generate() |> Ok.new()
+    %Uptight.Result.Ok{ok: [] |> TypeClass.Property.Generator.generate()}
   end
+end
+
+# Lawful typeclasses
+
+#######
+# Ord #
+#######
+
+definst Witchcraft.Ord, for: Uptight.Result.Err do
+  @spec compare(Uptight.Result.err(any()), Uptight.Result.t()) :: :lesser | :greater | :equal
+  def compare(_, %Ok{}), do: :lesser
+  def compare(%Err{err: x0}, %Err{err: x1}), do: Witchcraft.Ord.compare(x0, x1)
+end
+
+definst Witchcraft.Ord, for: Uptight.Result.Ok do
+  @spec compare(Uptight.Result.ok(any()), Uptight.Result.t()) :: :equal | :lesser | :greater
+  def compare(_, %Err{}), do: :greater
+  def compare(%Ok{ok: x0}, %Ok{ok: x1}), do: Witchcraft.Ord.compare(x0, x1)
 end
 
 ##########
@@ -159,50 +188,18 @@ definst Witchcraft.Setoid, for: Uptight.Result.Ok do
   def equivalent?(_, %Err{}), do: false
 end
 
-#######
-# Ord #
-#######
+###########
+# Comonad #
+###########
 
-definst Witchcraft.Ord, for: Uptight.Result.Err do
-  @spec compare(%Err{}, Uptight.Result.t()) :: :lesser | :greater | :equal
-  def compare(_, %Ok{}), do: :lesser
-  def compare(%Err{err: x0}, %Err{err: x1}), do: Witchcraft.Ord.compare(x0, x1)
+definst Witchcraft.Comonad, for: Uptight.Result.Err do
+  @spec extract(Uptight.Result.Err.t()) :: any()
+  def extract(%Uptight.Result.Err{err: x}), do: x
 end
 
-definst Witchcraft.Ord, for: Uptight.Result.Ok do
-  @spec compare(Uptight.Result.Ok.t(), Uptight.Result.t()) :: :equal | :lesser | :greater
-  def compare(_, %Err{}), do: :greater
-  def compare(%Ok{ok: x0}, %Ok{ok: x1}), do: Witchcraft.Ord.compare(x0, x1)
-end
-
-#############
-# Semigroup #
-#############
-
-definst Witchcraft.Semigroup, for: Uptight.Result.Err do
-  @spec append(Uptight.Result.Err.t(), Uptight.Result.t()) :: Uptight.Result.t()
-  def append(%Err{err: x0}, %Ok{ok: x1}), do: %Err{err: x0 <> x1}
-  def append(%Err{err: x0}, %Err{err: x1}), do: %Err{err: x0 <> x1}
-end
-
-definst Witchcraft.Semigroup, for: Uptight.Result.Ok do
-  @spec append(Uptight.Result.Ok.t(), Uptight.Result.t()) :: Uptight.Result.t()
-  def append(%Ok{ok: x0}, %Err{err: x1}), do: %Err{err: x0 <> x1}
-  def append(%Ok{ok: x0}, %Ok{ok: x1}), do: %Ok{ok: x0 <> x1}
-end
-
-##########
-# Monoid #
-##########
-
-definst Witchcraft.Monoid, for: Uptight.Result.Err do
-  @spec empty(Uptight.Result.Err.t()) :: Uptight.Result.Err.t()
-  def empty(%Err{err: x}), do: %Err{err: Witchcraft.Monoid.empty(x)}
-end
-
-definst Witchcraft.Monoid, for: Uptight.Result.Ok do
-  @spec empty(Uptight.Result.Ok.t()) :: Uptight.Result.Ok.t()
-  def empty(%Ok{ok: x}), do: %Ok{ok: Witchcraft.Monoid.empty(x)}
+definst Witchcraft.Comonad, for: Uptight.Result.Ok do
+  @spec extract(Uptight.Result.Ok.t()) :: any()
+  def extract(%Uptight.Result.Ok{ok: x}), do: x
 end
 
 ###########
@@ -210,14 +207,19 @@ end
 ###########
 
 definst Witchcraft.Functor, for: Uptight.Result.Err do
+  @type l :: any()
   # Functor.map now stops computation when it encounters an error
-  @spec map(Uptight.Result.Err.t(), (any() -> any())) :: Uptight.Result.Err.t()
+  @spec map(Uptight.Result.err(l), (any() -> any())) :: Uptight.Result.err(l)
   def map(%{err: x}, _f), do: %Err{err: x}
 end
 
 definst Witchcraft.Functor, for: Uptight.Result.Ok do
-  @spec map(Uptight.Result.Ok.t(), (any() -> any())) :: Uptight.Result.Ok.t()
-  def map(%{ok: x}, f), do: x |> f.() |> Ok.new()
+  @type r :: any()
+  @type y :: any()
+  @spec map(Uptight.Result.Ok.t(), (r -> y)) :: Uptight.Result.ok(y) | Uptight.Result.err(any())
+  def map(%{ok: x}, f) do
+    Uptight.Result.new(fn -> f.(x) end)
+  end
 end
 
 ############
@@ -264,21 +266,27 @@ end
 # convey :: f a -> f (a -> b) -> f b
 
 definst Witchcraft.Apply, for: Uptight.Result.Err do
-  @spec convey(Uptight.Result.t(), %{
-          :err => (Uptight.Result.t() -> any()),
-          optional(any()) => any()
-        }) ::
-          %Uptight.Result.Err{}
+  @type r :: any()
+  @type l :: any()
+  @type y :: any()
+  @spec convey(Uptight.Result.sum(l, r), Uptight.Result.err((l | r -> y))) ::
+          Uptight.Result.err(y)
   def convey(x, %Err{err: f}), do: Witchcraft.Functor.map(x, f)
 end
 
 definst Witchcraft.Apply, for: Uptight.Result.Ok do
-  @spec convey(Uptight.Result.t(), %{
-          :ok => (Uptight.Result.t() -> any()),
-          optional(any()) => any()
-        }) ::
-          Uptight.Result.t()
-  def convey(x, %Ok{ok: f}), do: Witchcraft.Functor.map(x, f)
+  @type r :: any()
+  @type l :: any()
+  @type y :: any()
+  @spec convey(Uptight.Result.sum(l, r), Uptight.Result.ok((l | r -> y))) ::
+          Uptight.Result.sum(any(), y)
+  def convey(x, %Ok{ok: f}) do
+    Result.new(fn -> Witchcraft.Functor.map(x, f) end)
+    |> case do
+      %Ok{ok: x} -> x
+      %Err{err: x} -> x
+    end
+  end
 end
 
 ###############
@@ -287,14 +295,11 @@ end
 
 ## Can't get this to propcheck for the time being
 
-definst Witchcraft.Applicative, for: Uptight.Result.Err do
-  @spec of(Uptight.Result.Err.t(), any()) :: Uptight.Result.Err.t()
-  def of(_, x), do: x |> Err.new()
-end
+# Result.Err is not applicative. It just doesn't make semantic sense.
 
 definst Witchcraft.Applicative, for: Uptight.Result.Ok do
   @spec of(Uptight.Result.Ok.t(), any()) :: Uptight.Result.Ok.t()
-  def of(_, x), do: x |> Ok.new()
+  def of(_, x), do: x |> Uptight.Result.ok(x)
 end
 
 #########
@@ -336,18 +341,4 @@ definst Witchcraft.Extend, for: Uptight.Result.Ok do
     do: %Uptight.Result.Ok{
       ok: %Uptight.Result.Ok{ok: x}
     }
-end
-
-###########
-# Comonad #
-###########
-
-definst Witchcraft.Comonad, for: Uptight.Result.Err do
-  @spec extract(Uptight.Result.Err.t()) :: any()
-  def extract(%Uptight.Result.Err{err: x}), do: x
-end
-
-definst Witchcraft.Comonad, for: Uptight.Result.Ok do
-  @spec extract(Uptight.Result.Ok.t()) :: any()
-  def extract(%Uptight.Result.Ok{ok: x}), do: x
 end

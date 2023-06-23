@@ -27,7 +27,7 @@ defmodule Uptight.MixProject do
     [
       {:credo, "~> 1.5", only: [:dev, :test], runtime: false},
       {:ex_doc, ">= 0.0.0", only: :dev, runtime: false},
-      {:dialyxir, "~> 1.1", only: :dev, runtime: false},
+      {:dialyxir, "~> 1.1", only: [:dev, :test], runtime: false},
       {:jason, "~> 1.3"},
       {:quark_goo, github: "doma-engineering/quark-goo", branch: "main"},
       {:algae_goo, github: "doma-engineering/algae-goo", branch: "main"},
