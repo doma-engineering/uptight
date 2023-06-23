@@ -50,7 +50,7 @@ defmodule Uptight.AssertionsTest do
     y =
       Uptight.Result.new(fn ->
         A.assert(
-          Uptight.Result.Err.new(42) |> Uptight.Result.is_ok?(),
+          %Uptight.Result.Err{err: 42} |> Uptight.Result.is_ok?(),
           "Hello, my name is Mario."
         )
       end)

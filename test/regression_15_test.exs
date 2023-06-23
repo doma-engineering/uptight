@@ -1,6 +1,4 @@
 defmodule Uptight.Regression15Test do
-  alias Uptight.Result
-
   @moduledoc """
   Regression:
 
@@ -17,6 +15,7 @@ defmodule Uptight.Regression15Test do
   """
 
   use ExUnit.Case
+  @moduletag timeout: 180_000
 
   test "module has no dialyzer warnings" do
     # Ensure the code is compiled and the PLT is created
@@ -37,7 +36,7 @@ defmodule Uptight.Regression15Test do
       # {:quiet_with_result, false}
     ]
 
-    {status, _, messages} =
+    {_status, _, messages} =
       Dialyxir.Dialyzer.dialyze(args, Dialyxir.Dialyzer.Runner, Dialyxir.Project)
 
     file_name = "lib/uptight/regressions/regression_15.ex"
