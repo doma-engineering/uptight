@@ -26,6 +26,8 @@ defmodule Uptight.Result do
 
   @type sum(e_t, a_t) :: err(e_t) | ok(a_t)
 
+  @type possibly(a_t) :: sum(any(), a_t)
+
   @type r :: any()
   @type l :: any()
   @type y :: any()
@@ -216,7 +218,7 @@ end
 definst Witchcraft.Functor, for: Uptight.Result.Ok do
   @type r :: any()
   @type y :: any()
-  @spec map(Uptight.Result.Ok.t(), (r -> y)) :: Uptight.Result.ok(y) | Uptight.Result.err(any())
+  @spec map(Uptight.Result.Ok.t(), (r -> y)) :: Uptight.Result.possibly(y)
   def map(%{ok: x}, f) do
     Uptight.Result.new(fn -> f.(x) end)
   end
@@ -247,14 +249,14 @@ end
 definst Witchcraft.Traversable, for: Uptight.Result.Err do
   @spec traverse(%Err{}, (any() -> Witchcraft.Traversable.t())) :: Witchcraft.Traversable.t()
   def traverse(%{err: err}, f) do
-    map(f.(err), &Err.new/1)
+    map(f.(err), fn x -> %Err{err: x} end)
   end
 end
 
 definst Witchcraft.Traversable, for: Uptight.Result.Ok do
   @spec traverse(%Ok{}, (any() -> Witchcraft.Traversable.t())) :: Witchcraft.Traversable.t()
   def traverse(%{ok: ok}, f) do
-    map(f.(ok), &Ok.new/1)
+    map(f.(ok), fn x -> %Ok{ok: x} end)
   end
 end
 
@@ -270,8 +272,14 @@ definst Witchcraft.Apply, for: Uptight.Result.Err do
   @type l :: any()
   @type y :: any()
   @spec convey(Uptight.Result.sum(l, r), Uptight.Result.err((l | r -> y))) ::
-          Uptight.Result.err(y)
-  def convey(x, %Err{err: f}), do: Witchcraft.Functor.map(x, f)
+          Uptight.Result.sum(y, any())
+  def convey(x, %Err{err: f}) do
+    Uptight.Result.new(fn -> Witchcraft.Functor.map(x, f) end)
+    |> case do
+      ok = %Ok{} -> ok
+      err = %Err{} -> %Err{err: err}
+    end
+  end
 end
 
 definst Witchcraft.Apply, for: Uptight.Result.Ok do
@@ -281,11 +289,7 @@ definst Witchcraft.Apply, for: Uptight.Result.Ok do
   @spec convey(Uptight.Result.sum(l, r), Uptight.Result.ok((l | r -> y))) ::
           Uptight.Result.sum(any(), y)
   def convey(x, %Ok{ok: f}) do
-    Result.new(fn -> Witchcraft.Functor.map(x, f) end)
-    |> case do
-      %Ok{ok: x} -> x
-      %Err{err: x} -> x
-    end
+    Uptight.Result.new(fn -> Witchcraft.Functor.map(x, f) end)
   end
 end
 
@@ -297,10 +301,10 @@ end
 
 # Result.Err is not applicative. It just doesn't make semantic sense.
 
-definst Witchcraft.Applicative, for: Uptight.Result.Ok do
-  @spec of(Uptight.Result.Ok.t(), any()) :: Uptight.Result.Ok.t()
-  def of(_, x), do: x |> Uptight.Result.ok(x)
-end
+# definst Witchcraft.Applicative, for: Uptight.Result.Ok do
+# @spec of(Uptight.Result.Ok.t(), any()) :: Uptight.Result.Ok.t()
+# def of(_, x), do: x |> Uptight.Result.ok()
+# end
 
 #########
 # Chain #
