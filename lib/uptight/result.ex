@@ -297,14 +297,15 @@ end
 # Applicative #
 ###############
 
-## Can't get this to propcheck for the time being
+definst Witchcraft.Applicative, for: Uptight.Result.Err do
+  @spec of(Uptight.Result.Err.t(), any()) :: Uptight.Result.Err.t()
+  def of(%Uptight.Result.Err{}, x), do: %Err{err: x}
+end
 
-# Result.Err is not applicative. It just doesn't make semantic sense.
-
-# definst Witchcraft.Applicative, for: Uptight.Result.Ok do
-# @spec of(Uptight.Result.Ok.t(), any()) :: Uptight.Result.Ok.t()
-# def of(_, x), do: x |> Uptight.Result.ok()
-# end
+definst Witchcraft.Applicative, for: Uptight.Result.Ok do
+  @spec of(Uptight.Result.Ok.t(), any()) :: Uptight.Result.Ok.t()
+  def of(%Uptight.Result.Ok{}, x), do: %Ok{ok: x}
+end
 
 #########
 # Chain #
