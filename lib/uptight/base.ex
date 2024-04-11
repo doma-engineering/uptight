@@ -191,16 +191,16 @@ defmodule Uptight.Base do
   defdelegate supersafe!(binary_t), to: __MODULE__, as: :binary_to_58!
 
   @spec from_url(String.t()) :: Result.possibly(Urlsafe.t())
-  defdelegate from_url(url_t), to: __MODULE__, as: :mk_url
+  defdelegate from_url(raw_string), to: __MODULE__, as: :mk_url
 
   @spec from_url!(String.t()) :: Urlsafe.t()
-  defdelegate from_url!(url_t), to: __MODULE__, as: :mk_url!
+  defdelegate from_url!(raw_string), to: __MODULE__, as: :mk_url!
 
   @spec from_58(String.t()) :: Result.possibly(FiftyEight.t())
-  defdelegate from_58(fifty_eight_t), to: __MODULE__, as: :mk58
+  defdelegate from_58(raw_string), to: __MODULE__, as: :mk58
 
   @spec from_58!(String.t()) :: FiftyEight.t()
-  defdelegate from_58!(fifty_eight_t), to: __MODULE__, as: :mk58!
+  defdelegate from_58!(raw_string), to: __MODULE__, as: :mk58!
 
   @alnum ~c(123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz)
 
