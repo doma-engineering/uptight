@@ -25,7 +25,7 @@ defmodule Uptight.Regression.Regression15 do
   For example, if we change the return type of use_ook/1 to the correct type: non_neg_integer(), then dialyzer will complain because the contracted types won't match.
   """
   @spec use_ook(Result.ok(atom())) :: atom()
-  def use_ook(x) do
+  def use_ook(_x) do
     ook().ok
   end
 
@@ -49,7 +49,7 @@ defmodule Uptight.Regression.Regression15 do
   def f(x) do
     case Result.new(fn -> 4 = 2 + x end) do
       %Result.Ok{ok: ok} -> ok
-      %Result.Err{err: err} -> nil
+      %Result.Err{err: _err} -> nil
     end
   end
 
@@ -61,7 +61,7 @@ defmodule Uptight.Regression.Regression15 do
     Either.Right.new(x)
   end
 
-  def g(x) do
+  def g(_x) do
     case Either.Right.new(5) do
       # %Either.Left{left: left} -> nil
       %Either.Right{right: right} -> right

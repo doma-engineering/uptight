@@ -7,7 +7,10 @@ defmodule Uptight.Text.Urlencoded do
   alias Uptight.Result
   import Algae
 
-  @dialyzer {:nowarn_function, new: 1}
+  defprod do
+    encoded :: T.t()
+    raw :: T.t()
+  end
 
   @doc """
   Defensive constructor.
@@ -23,13 +26,6 @@ defmodule Uptight.Text.Urlencoded do
   """
   def new(text) do
     Result.new(fn -> new!(text) end)
-  end
-
-  # This is a very ugly hack to get around the fact that we can't disable `new` function generation by default in witchcraft.
-  # Some day we'll make it configurable and then we'll be able to put this `defdata` back up.
-  defdata do
-    encoded :: T.t()
-    raw :: T.t()
   end
 
   def new!(x = %T{}) do
