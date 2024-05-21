@@ -18,6 +18,7 @@ defmodule Uptight.Trace do
   end
 
   def arity_or_args_to_int(xs) when is_list(xs) do
+    # TODO: Encode me :begging:
     length(xs)
   end
 
