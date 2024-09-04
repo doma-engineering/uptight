@@ -1,7 +1,7 @@
 {
     inputs = {
         nixpkgs.url = "github:NixOS/nixpkgs";
-        goo.url = "github:doma-engineering/goo-1.14?ref=v1.14";
+        goo.url = "github:doma-engineering/goo";
     };
 
     outputs = {self, nixpkgs, goo}:
@@ -12,7 +12,7 @@
             devShell.x86_64-linux =
                 pkgs.mkShell {
                     buildInputs = [
-                        pkgs.erlangR24
+                        pkgs.erlang_26
                         goo.defaultPackage.x86_64-linux
                         pkgs.libsodium
                         pkgs.inotify-tools
